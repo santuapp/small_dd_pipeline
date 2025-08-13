@@ -1,0 +1,12 @@
+gradio
+py3Dmol
+requests
+pandas
+rdkit-pypi
+openmm
+pdbfixer
+matplotlib
+biopandas
+nglview
+mdtraj
+boltons

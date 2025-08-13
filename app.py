@@ -14,9 +14,7 @@ import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import AllChem, Draw
 import openmm as mm
-from openmm.app import *
-from openmm import *
-from openmm.unit import *
+from openmm.app import PDBFile, PDBFixer
 import matplotlib.pyplot as plt
 from biopandas.pdb import PandasPdb
 import nglview as nv
@@ -103,13 +101,20 @@ with gr.Blocks() as demo:
                 return visualize_protein(pdb_content), None
 
             def download_pdb(pdb_id):
+                pdb_content = None
+                filename = "protein.pdb"
                 if pdb_id:
                     pdb_content = fetch_pdb(pdb_id)
-                    with open(f"{pdb_id}.pdb", "w") as f:
-                        f.write(pdb_content)
-                    return f"{pdb_id}.pdb"
+                    filename = f"{pdb_id}.pdb"
                 else:
-                    return None
+                    pdb_content = CACHE.get("pdb_upload")
+
+                if pdb_content:
+                    with open(filename, "w") as f:
+                        f.write(pdb_content)
+                    return filename
+                else:
+                    raise gr.Error("No PDB data to download. Please enter a PDB ID or upload a file first.")
 
             pdb_id_input.change(process_pdb_input, inputs=[pdb_id_input, pdb_upload], outputs=[protein_viewer, pdb_download_file])
             pdb_upload.change(process_pdb_input, inputs=[pdb_id_input, pdb_upload], outputs=[protein_viewer, pdb_download_file])
@@ -130,7 +135,7 @@ with gr.Blocks() as demo:
                 with open("original.pdb", "w") as f:
                     f.write(pdb_content)
 
-                fixer = pdbfixer(filename="original.pdb")
+                fixer = PDBFixer(filename="original.pdb")
                 fixer.findMissingResidues()
                 fixer.findMissingAtoms()
                 fixer.addMissingAtoms()
@@ -162,7 +167,8 @@ with gr.Blocks() as demo:
             
             pocket_viewer = gr.HTML()
 
-            def run_fpocket_mock(pdb_id, pdb_upload):
+            def run_fpocket(pdb_id, pdb_upload):
+                # NOTE: This is a mock function. It does not actually run fpocket.
                 fixed_pdb_content = CACHE.get("fixed_pdb")
                 if not fixed_pdb_content:
                     raise gr.Error("Please run protein preparation in the previous step.")
@@ -180,7 +186,7 @@ with gr.Blocks() as demo:
 
                 return visualize_protein(fixed_pdb_content, highlight_pockets=pockets)
 
-            run_fpocket_button.click(run_fpocket_mock, inputs=[pdb_id_input, pdb_upload], outputs=pocket_viewer)
+            run_fpocket_button.click(run_fpocket, inputs=[pdb_id_input, pdb_upload], outputs=pocket_viewer)
 
         with gr.TabItem("4. Ligand Preparation"):
             with gr.Row():
@@ -193,7 +199,10 @@ with gr.Blocks() as demo:
             def process_ligands(ligand_csv, generate_mock):
                 if ligand_csv is not None:
                     df = pd.read_csv(ligand_csv.name)
-                    smiles_list = df["SMILES"].tolist()
+                    try:
+                        smiles_list = df["SMILES"].tolist()
+                    except KeyError:
+                        raise gr.Error("The uploaded CSV file must contain a 'SMILES' column.")
                 elif generate_mock:
                     smiles_list = ["CCO", "CCN", "CNC"]
                 else:
@@ -233,6 +242,7 @@ with gr.Blocks() as demo:
             docking_viewer = gr.HTML()
 
             def run_docking():
+                # NOTE: This is a mock function. It does not perform real docking.
                 fixed_pdb_content = CACHE.get("fixed_pdb")
                 pockets = CACHE.get("pockets")
                 molecules_3d = CACHE.get("molecules_3d")
@@ -270,6 +280,7 @@ with gr.Blocks() as demo:
             md_viewer = gr.HTML()
 
             def run_md_simulation():
+                # NOTE: This is a mock function. It does not perform a real MD simulation.
                 docking_results = CACHE.get("docking_results")
                 if docking_results is None:
                     raise gr.Error("Please run docking first.")
